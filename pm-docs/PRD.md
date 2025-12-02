@@ -12,7 +12,7 @@ To show a spinning globe that is procedurally generated in WebGL.
 
 - Create procedurally generated planets based on certain parameters
 - Spin the globe around
-- Display a globe in WebGL / Three.js
+- Display a globe in WebGL
 - Save planets in a library to create more of them
 
 ## Intended Pages

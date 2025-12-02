@@ -1,0 +1,95 @@
+/* CSS Variables */
+:root {
+    --color-text: #39393A;
+    --color-bg: #E6E6E6;
+    --color-card-bg: #FFFFFF;
+    --color-primary: #297373;
+    --color-primary-light: #3a8a8a;
+    --color-border: #39393A;
+    --color-border-light: #2a2a2b;
+    --color-border-dark: #1e1e1f;
+    --color-text-muted: rgba(57, 57, 58, 0.7);
+}
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', 'Besley', sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+/* Typography */
+h1, h2, h3 {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+}
+
+h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Common Button Styles */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--color-primary-light);
+}
+
+.btn-secondary {
+    background: var(--color-border-light);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+    background: var(--color-border);
+    color: var(--color-bg);
+}
+
+/* Error Message */
+.error-message {
+    padding: 1rem;
+    background: #d32f2f;
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+    margin: 2rem;
+}
+
+/* Layout Utilities */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+

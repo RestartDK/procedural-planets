@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DK Planet - Creator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Besley:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/creator.css">
+</head>
+<body>
+    <div class="creator-container">
+        <aside class="sidebar">
+            <div class="control-group">
+                <label for="terrain-slider">Terrain</label>
+                <input type="range" id="terrain-slider" min="0" max="1" step="0.01" value="0.5">
+                <span class="slider-value" id="terrain-value">0.5</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="color-slider">Color</label>
+                <input type="range" id="color-slider" min="0" max="1" step="0.01" value="0.5">
+                <span class="slider-value" id="color-value">0.5</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="size-slider">Size</label>
+                <input type="range" id="size-slider" min="0.5" max="2.0" step="0.01" value="1.0">
+                <span class="slider-value" id="size-value">1.0</span>
+            </div>
+            
+            <div class="button-group">
+                <button id="randomize-btn" class="btn btn-secondary">Randomize</button>
+                <button id="save-btn" class="btn btn-primary">Save Planet</button>
+            </div>
+            
+            <div class="nav-link">
+                <a href="index.html">← Back to Gallery</a>
+            </div>
+        </aside>
+        
+        <main class="canvas-container">
+            <canvas id="planet-canvas"></canvas>
+            <div id="webgl-error" class="error-message" style="display: none;">
+                WebGL is not supported in your browser. Please use a modern browser that supports WebGL.
+            </div>
+        </main>
+    </div>
+    
+    <script src="js/storage.js"></script>
+    <script src="js/planet-generator.js"></script>
+    <script src="js/controls.js"></script>
+</body>
+</html>
+
