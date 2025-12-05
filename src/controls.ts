@@ -1,5 +1,3 @@
-// Parameter controls and UI interactions
-
 import { loadPlanet, savePlanet } from "./storage";
 import type { PlanetParameters } from "./types";
 import { 

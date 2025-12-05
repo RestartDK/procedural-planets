@@ -1,5 +1,3 @@
-// WebGL Planet Generator
-
 import type { Camera, PlanetGeometry, SphereGeometry, MVP, RenderParams } from "./types";
 
 let gl: WebGLRenderingContext | null = null;
@@ -154,45 +152,171 @@ function createProgram(vertexSource: string, fragmentSource: string): WebGLProgr
 }
 
 /**
- * Generate sphere geometry
+ * Generate icosphere geometry (subdivided icosahedron)
  */
-function generateSphereGeometry(segments: number = 32): SphereGeometry {
-  const vertices: number[] = [];
-  const indices: number[] = [];
-  const normals: number[] = [];
+function generateIcosphere(subdivisions: number): SphereGeometry {
+  const t = (1 + Math.sqrt(5)) / 2; // Golden ratio
+
+  // Step 1: Create initial icosahedron vertices
+  let vertices: number[] = [
+    -1,  t,  0,   1,  t,  0,  -1, -t,  0,   1, -t,  0,
+     0, -1,  t,   0,  1,  t,   0, -1, -t,   0,  1, -t,
+     t,  0, -1,   t,  0,  1,  -t,  0, -1,  -t,  0,  1
+  ];
+
+  // Normalize initial vertices to unit sphere
+  for (let i = 0; i < vertices.length; i += 3) {
+    const x = vertices[i]!;
+    const y = vertices[i + 1]!;
+    const z = vertices[i + 2]!;
+    const length = Math.sqrt(x * x + y * y + z * z);
+    vertices[i] = x / length;
+    vertices[i + 1] = y / length;
+    vertices[i + 2] = z / length;
+  }
+
+  // Step 2: Create initial 20 faces
+  let indices: number[] = [
+    0, 11, 5,   0, 5, 1,   0, 1, 7,   0, 7, 10,   0, 10, 11,
+    1, 5, 9,    5, 11, 4,  11, 10, 2,  10, 7, 6,   7, 1, 8,
+    3, 9, 4,    3, 4, 2,   3, 2, 6,    3, 6, 8,    3, 8, 9,
+    4, 9, 5,    2, 4, 11,  6, 2, 10,   8, 6, 7,    9, 8, 1
+  ];
+
+  // Step 3: Subdivide triangles
+  const midpointCache = new Map<string, number>();
+
+  const getMidpoint = (v1: number, v2: number): number => {
+    const key = v1 < v2 ? `${v1},${v2}` : `${v2},${v1}`;
+
+    if (midpointCache.has(key)) {
+      return midpointCache.get(key)!;
+    }
+
+    const x = (vertices[v1 * 3]! + vertices[v2 * 3]!) / 2;
+    const y = (vertices[v1 * 3 + 1]! + vertices[v2 * 3 + 1]!) / 2;
+    const z = (vertices[v1 * 3 + 2]! + vertices[v2 * 3 + 2]!) / 2;
+
+    // Project to sphere
+    const length = Math.sqrt(x * x + y * y + z * z);
+    vertices.push(x / length, y / length, z / length);
+
+    const index = vertices.length / 3 - 1;
+    midpointCache.set(key, index);
+    return index;
+  };
+
+  // Subdivide each triangle
+  for (let i = 0; i < subdivisions; i++) {
+    const newIndices: number[] = [];
+
+    for (let j = 0; j < indices.length; j += 3) {
+      const v1 = indices[j]!;
+      const v2 = indices[j + 1]!;
+      const v3 = indices[j + 2]!;
+
+      const a = getMidpoint(v1, v2);
+      const b = getMidpoint(v2, v3);
+      const c = getMidpoint(v3, v1);
+
+      newIndices.push(v1, a, c);
+      newIndices.push(v2, b, a);
+      newIndices.push(v3, c, b);
+      newIndices.push(a, b, c);
+    }
+
+    indices = newIndices;
+    midpointCache.clear();
+  }
+
+  // Step 4: Generate normals (for unit sphere, normal = position)
+  const normals: number[] = [...vertices];
+
+  // Step 5: Generate simple UVs (spherical mapping)
   const uvs: number[] = [];
-  
-  for (let lat = 0; lat <= segments; lat++) {
-    const theta = lat * Math.PI / segments;
-    const sinTheta = Math.sin(theta);
-    const cosTheta = Math.cos(theta);
-    
-    for (let lon = 0; lon <= segments; lon++) {
-      const phi = lon * 2 * Math.PI / segments;
-      const sinPhi = Math.sin(phi);
-      const cosPhi = Math.cos(phi);
-      
-      const x = cosPhi * sinTheta;
-      const y = cosTheta;
-      const z = sinPhi * sinTheta;
-      
-      vertices.push(x, y, z);
-      normals.push(x, y, z);
-      uvs.push(lon / segments, lat / segments);
-    }
+  for (let i = 0; i < vertices.length; i += 3) {
+    const x = vertices[i]!;
+    const y = vertices[i + 1]!;
+    const z = vertices[i + 2]!;
+
+    const u = 0.5 + Math.atan2(z, x) / (2 * Math.PI);
+    const v = 0.5 - Math.asin(y) / Math.PI;
+
+    uvs.push(u, v);
   }
-  
-  for (let lat = 0; lat < segments; lat++) {
-    for (let lon = 0; lon < segments; lon++) {
-      const first = lat * (segments + 1) + lon;
-      const second = first + segments + 1;
-      
-      indices.push(first, second, first + 1);
-      indices.push(second, second + 1, first + 1);
-    }
-  }
-  
+
   return { vertices, indices, normals, uvs };
+}
+
+/**
+ * Recalculate normals after terrain displacement
+ */
+function recalculateNormals(vertices: number[], indices: number[]): number[] {
+  // Initialize normals array with zeros
+  const normals = new Array(vertices.length).fill(0);
+
+  // Calculate face normals and accumulate to vertex normals
+  for (let i = 0; i < indices.length; i += 3) {
+    const i0 = indices[i]! * 3;
+    const i1 = indices[i + 1]! * 3;
+    const i2 = indices[i + 2]! * 3;
+
+    // Get triangle vertices
+    const v0x = vertices[i0]!;
+    const v0y = vertices[i0 + 1]!;
+    const v0z = vertices[i0 + 2]!;
+
+    const v1x = vertices[i1]!;
+    const v1y = vertices[i1 + 1]!;
+    const v1z = vertices[i1 + 2]!;
+
+    const v2x = vertices[i2]!;
+    const v2y = vertices[i2 + 1]!;
+    const v2z = vertices[i2 + 2]!;
+
+    // Calculate edges
+    const edge1x = v1x - v0x;
+    const edge1y = v1y - v0y;
+    const edge1z = v1z - v0z;
+
+    const edge2x = v2x - v0x;
+    const edge2y = v2y - v0y;
+    const edge2z = v2z - v0z;
+
+    // Calculate face normal via cross product
+    const nx = edge1y * edge2z - edge1z * edge2y;
+    const ny = edge1z * edge2x - edge1x * edge2z;
+    const nz = edge1x * edge2y - edge1y * edge2x;
+
+    // Accumulate to vertex normals
+    normals[i0] = (normals[i0] || 0) + nx;
+    normals[i0 + 1] = (normals[i0 + 1] || 0) + ny;
+    normals[i0 + 2] = (normals[i0 + 2] || 0) + nz;
+
+    normals[i1] = (normals[i1] || 0) + nx;
+    normals[i1 + 1] = (normals[i1 + 1] || 0) + ny;
+    normals[i1 + 2] = (normals[i1 + 2] || 0) + nz;
+
+    normals[i2] = (normals[i2] || 0) + nx;
+    normals[i2 + 1] = (normals[i2 + 1] || 0) + ny;
+    normals[i2 + 2] = (normals[i2 + 2] || 0) + nz;
+  }
+
+  // Normalize all vertex normals
+  for (let i = 0; i < normals.length; i += 3) {
+    const nx = normals[i]!;
+    const ny = normals[i + 1]!;
+    const nz = normals[i + 2]!;
+    const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+
+    if (length > 0) {
+      normals[i] = nx / length;
+      normals[i + 1] = ny / length;
+      normals[i + 2] = nz / length;
+    }
+  }
+
+  return normals;
 }
 
 /**
@@ -235,22 +359,36 @@ function applyNoise(vertices: number[], terrainComplexity: number, size: number)
  */
 function initializePlanet(terrainComplexity: number, colorVariation: number, size: number): void {
   if (!gl) return;
-  
-  const baseGeometry = generateSphereGeometry(32);
+
+  const baseGeometry = generateIcosphere(3);
   const noisyVertices = applyNoise(baseGeometry.vertices, terrainComplexity, size);
-  
+
+  // Recalculate normals after terrain displacement
+  const recalculatedNormals = recalculateNormals(noisyVertices, baseGeometry.indices);
+
+  // Adjust camera distance based on planet size
+  camera.distance = size * 5.0;
+  camera.targetDistance = size * 5.0;
+
+  console.log('Icosphere generated:', {
+    vertices: noisyVertices.length / 3,
+    triangles: baseGeometry.indices.length / 3,
+    size: size,
+    cameraDistance: camera.distance
+  });
+
   // Create buffers
   const positionBuffer = gl.createBuffer();
   if (!positionBuffer) return;
-  
+
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(noisyVertices), gl.STATIC_DRAW);
-  
+
   const normalBuffer = gl.createBuffer();
   if (!normalBuffer) return;
-  
+
   gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(baseGeometry.normals), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(recalculatedNormals), gl.STATIC_DRAW);
   
   const indexBuffer = gl.createBuffer();
   if (!indexBuffer) return;
@@ -546,7 +684,12 @@ function renderPlanet(params?: RenderParams): void {
   if (!gl || !program || !planetGeometry) {
     return;
   }
-  
+
+  // Log first frame render
+  if (frameCount === 0) {
+    console.log('First render frame started');
+  }
+
   // Auto-rotate when not dragging
   if (!isDragging) {
     camera.targetRotationY += 0.005;
@@ -620,18 +763,27 @@ function renderPlanet(params?: RenderParams): void {
  */
 export function initPlanetGenerator(canvas: HTMLCanvasElement): boolean {
   if (!initWebGL(canvas)) {
+    console.error('Failed to initialize WebGL');
     return false;
   }
-  
-  if (!gl) return false;
-  
+
+  if (!gl) {
+    console.error('WebGL context is null');
+    return false;
+  }
+
+  console.log('WebGL initialized successfully');
+
   program = createProgram(vertexShaderSource, fragmentShaderSource);
   if (!program) {
+    console.error('Failed to create shader program');
     return false;
   }
-  
+
+  console.log('Shader program created successfully');
+
   setupCameraControls(canvas);
-  
+
   return true;
 }
 
