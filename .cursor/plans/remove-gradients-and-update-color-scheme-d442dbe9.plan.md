@@ -1,4 +1,24 @@
-<!-- d442dbe9-30b2-4af0-89a5-903413288317 a4f7c33a-3fc1-477e-970f-af42591be787 -->
+---
+name: Remove Gradients and Update Color Scheme
+overview: ""
+todos:
+  - id: 2e426b41-f52f-46f3-8205-c06485a965a2
+    content: Add Google Fonts links for Inter and Besley to index.html and creator.html
+    status: pending
+  - id: 1e95d02b-4c36-49aa-b047-c20abe9bdab4
+    content: Add :root CSS variables for all colors in styles.css
+    status: pending
+  - id: 1f834d22-2d99-4a40-a9a9-44fb0898091b
+    content: "Update styles.css: remove gradients, update colors to use variables, change font-family, remove hover transforms"
+    status: pending
+  - id: 993847e0-d3f6-4ffe-86b6-5d53ed51ad8a
+    content: "Update creator.css: remove gradients, update colors to use variables, remove hover transforms, adjust sidebar and controls styling"
+    status: pending
+  - id: cdd043ce-6d3e-4fbf-8e3c-25904d4bfdc7
+    content: "Update gallery.css: remove gradients, update colors to use variables, remove hover transforms, adjust card and button styling"
+    status: pending
+---
+
 # Remove Gradients and Update Color Scheme
 
 ## Overview
@@ -87,11 +107,3 @@ Define these variables in `:root` in `css/styles.css`:
 - Use `rgba()` with CSS variables when opacity is needed, or define separate opacity variables
 - Ensure sufficient contrast between text and background colors
 - Test hover states show clear color feedback without any movement/transformation
-
-### To-dos
-
-- [ ] Add Google Fonts links for Inter and Besley to index.html and creator.html
-- [ ] Add :root CSS variables for all colors in styles.css
-- [ ] Update styles.css: remove gradients, update colors to use variables, change font-family, remove hover transforms
-- [ ] Update creator.css: remove gradients, update colors to use variables, remove hover transforms, adjust sidebar and controls styling
-- [ ] Update gallery.css: remove gradients, update colors to use variables, remove hover transforms, adjust card and button styling
