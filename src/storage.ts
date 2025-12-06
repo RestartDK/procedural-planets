@@ -14,15 +14,14 @@ function generatePlanetId(): string {
 /**
  * Save a planet to localStorage
  */
-export function savePlanet(name: string, parameters: PlanetParameters): Planet {
+export function savePlanet(parameters: PlanetParameters): Planet {
   try {
     const planet: Planet = {
       id: generatePlanetId(),
-      name: name || 'Unnamed Planet',
       createdAt: new Date().toISOString(),
       parameters: {
         terrainComplexity: parameters.terrainComplexity ?? 0.5,
-        colorVariation: parameters.colorVariation ?? 0.5,
+        color: parameters.color ?? '#66a0ff',
         size: parameters.size ?? 1.0
       }
     };
@@ -46,7 +45,7 @@ export function savePlanet(name: string, parameters: PlanetParameters): Planet {
 /**
  * Update an existing planet in localStorage
  */
-export function updatePlanet(id: string, name: string, parameters: PlanetParameters): Planet | null {
+export function updatePlanet(id: string, parameters: PlanetParameters): Planet | null {
   try {
     const planets = getAllPlanets();
     const planetIndex = planets.findIndex(planet => planet.id === id);
@@ -57,10 +56,9 @@ export function updatePlanet(id: string, name: string, parameters: PlanetParamet
     
     const updatedPlanet: Planet = {
       ...planets[planetIndex]!,
-      name: name || 'Unnamed Planet',
       parameters: {
         terrainComplexity: parameters.terrainComplexity ?? 0.5,
-        colorVariation: parameters.colorVariation ?? 0.5,
+        color: parameters.color ?? '#66a0ff',
         size: parameters.size ?? 1.0
       }
     };
@@ -94,7 +92,15 @@ export function loadPlanet(id: string): Planet | null {
 export function getAllPlanets(): Planet[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const parsed = data ? JSON.parse(data) : [];
+    return parsed.map((planet: Planet) => ({
+      ...planet,
+      parameters: {
+        terrainComplexity: planet.parameters?.terrainComplexity ?? 0.5,
+        color: planet.parameters?.color ?? '#66a0ff',
+        size: planet.parameters?.size ?? 1.0
+      }
+    }));
   } catch (error) {
     console.error('Error loading planets:', error);
     return [];

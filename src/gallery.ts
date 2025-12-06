@@ -56,8 +56,7 @@ function initGalaxyExplorer(): void {
       const targetId = actions?.getAttribute('data-planet-id');
       if (!targetId) return;
       const planets = getAllPlanets();
-      const target = planets.find((p) => p.id === targetId);
-      const confirmed = target ? confirm(`Delete "${target.name}"?`) : confirm('Delete this planet?');
+      const confirmed = confirm('Delete this planet?');
       if (confirmed && deletePlanet(targetId)) {
         scene.deletePlanet(targetId);
         refreshPlanets();

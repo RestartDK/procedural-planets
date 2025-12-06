@@ -2,13 +2,12 @@
 
 export interface PlanetParameters {
   terrainComplexity: number;
-  colorVariation: number;
+  color: string;
   size: number;
 }
 
 export interface Planet {
   id: string;
-  name: string;
   createdAt: string;
   parameters: PlanetParameters;
 }
@@ -27,7 +26,6 @@ export interface PlanetGeometry {
   normals: WebGLBuffer;
   indices: WebGLBuffer;
   indexCount: number;
-  colorVariation: number;
 }
 
 export interface SphereGeometry {
@@ -44,7 +42,7 @@ export interface MVP {
 }
 
 export interface RenderParams {
-  colorVariation: number;
+  color: [number, number, number];
   modelMatrix?: number[];
   viewMatrix?: number[];
   projectionMatrix?: number[];
@@ -56,13 +54,12 @@ export interface PlanetMeshData {
   vertices: number[];
   normals: number[];
   indices: number[];
-  colorVariation: number;
 }
 
 export interface PlanetInstance {
   planet: Planet;
   position: [number, number, number];
   size: number;
-  colorVariation: number;
+  color: [number, number, number];
   geometry?: PlanetGeometry;
 }
