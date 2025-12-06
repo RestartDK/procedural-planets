@@ -8,5 +8,9 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "scripts": {
+    "tsc": "bunx tsc --noEmit",
+    "dev": "bun run index.ts"
   }
 }
