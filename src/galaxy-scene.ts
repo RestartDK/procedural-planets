@@ -384,7 +384,6 @@ export class GalaxyScene {
 
     const viewportWidth = this.canvas.width;
     const viewportHeight = this.canvas.height;
-    const dpr = window.devicePixelRatio || 1;
     const aspect = viewportWidth / viewportHeight;
 
     const cameraOffset = 8;
@@ -494,12 +493,7 @@ export class GalaxyScene {
         closest = d;
         const projected = projectToScreen(planet.position, viewProjection, viewportWidth, viewportHeight);
         focus = planet;
-        // Convert from device pixels (WebGL viewport) to CSS pixels for UI overlay positioning
-        focusScreen = {
-          ...projected,
-          x: projected.x / dpr,
-          y: projected.y / dpr
-        };
+        focusScreen = projected;
       }
     }
 
