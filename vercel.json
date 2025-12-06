@@ -6,11 +6,11 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/pages/index.html"
+      "destination": "./dist/index.html"
     },
     {
       "source": "/creator",
-      "destination": "/pages/creator.html"
+      "destination": "./dist/creator.html"
     }
   ]
 }
