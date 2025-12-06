@@ -45,4 +45,24 @@ export interface MVP {
 
 export interface RenderParams {
   colorVariation: number;
+  modelMatrix?: number[];
+  viewMatrix?: number[];
+  projectionMatrix?: number[];
+  lightDirection?: [number, number, number];
+}
+
+// Reusable math/geometry helpers for 3D scenes
+export interface PlanetMeshData {
+  vertices: number[];
+  normals: number[];
+  indices: number[];
+  colorVariation: number;
+}
+
+export interface PlanetInstance {
+  planet: Planet;
+  position: [number, number, number];
+  size: number;
+  colorVariation: number;
+  geometry?: PlanetGeometry;
 }
