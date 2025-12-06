@@ -20,6 +20,17 @@ interface ScreenPosition {
 }
 
 const PROXIMITY_DISTANCE = 14;
+const DEFAULT_COLOR: [number, number, number] = [0.4, 0.7, 1];
+
+function hexToRGB(color: string | undefined): [number, number, number] {
+  if (!color) return DEFAULT_COLOR;
+  const hex = color.replace('#', '');
+  if (hex.length !== 6) return DEFAULT_COLOR;
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  return [r, g, b];
+}
 
 function normalizeVector(v: [number, number, number]): [number, number, number] {
   const len = Math.hypot(v[0], v[1], v[2]) || 1;
@@ -328,18 +339,18 @@ export class GalaxyScene {
     planets.forEach((planet) => {
       const mesh = buildPlanetMeshData(
         planet.parameters.terrainComplexity,
-        planet.parameters.colorVariation,
         planet.parameters.size
       );
       const geometry = createPlanetGeometryFromMesh(this.gl!, mesh);
       const position = this.generatePlanetPosition(placements);
       const modelMatrix = composeModelMatrix(position, 1);
+      const color = hexToRGB(planet.parameters.color);
 
       placements.push({
         planet,
         position,
         size: planet.parameters.size,
-        colorVariation: planet.parameters.colorVariation,
+        color,
         geometry,
         modelMatrix
       });
@@ -384,6 +395,9 @@ export class GalaxyScene {
 
     const viewportWidth = this.canvas.width;
     const viewportHeight = this.canvas.height;
+    const screenRect = this.canvas.getBoundingClientRect();
+    const screenWidth = screenRect.width;
+    const screenHeight = screenRect.height;
     const aspect = viewportWidth / viewportHeight;
 
     const cameraOffset = 8;
@@ -440,7 +454,7 @@ export class GalaxyScene {
         modelMatrix: planet.modelMatrix,
         viewMatrix: viewMatrixFlipped,
         projectionMatrix,
-        colorVariation: planet.colorVariation
+        color: planet.color
       });
     }
 
@@ -491,7 +505,7 @@ export class GalaxyScene {
       const d = distance(this.rocketState.position, planet.position) - planet.size * 0.5;
       if (d < PROXIMITY_DISTANCE && d < closest) {
         closest = d;
-        const projected = projectToScreen(planet.position, viewProjection, viewportWidth, viewportHeight);
+        const projected = projectToScreen(planet.position, viewProjection, screenWidth, screenHeight);
         focus = planet;
         focusScreen = projected;
       }

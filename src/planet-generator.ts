@@ -22,6 +22,8 @@ const IDENTITY_MATRIX = [
   0, 0, 0, 1
 ];
 
+const DEFAULT_COLOR: [number, number, number] = [0.4, 0.7, 1];
+
 // Basic 4x4 matrix multiplication (column-major)
 function multiply4x4(a: number[], b: number[]): number[] {
   const result: number[] = new Array(16).fill(0);
@@ -407,7 +409,6 @@ export function composeModelMatrix(
  */
 export function buildPlanetMeshData(
   terrainComplexity: number,
-  colorVariation: number,
   size: number
 ): PlanetMeshData {
   const baseGeometry = generateIcosphere(3);
@@ -417,8 +418,7 @@ export function buildPlanetMeshData(
   return {
     vertices: noisyVertices,
     indices: baseGeometry.indices,
-    normals: recalculatedNormals,
-    colorVariation
+    normals: recalculatedNormals
   };
 }
 
@@ -457,8 +457,7 @@ export function createPlanetGeometryFromMesh(
     positions: positionBuffer,
     normals: normalBuffer,
     indices: indexBuffer,
-    indexCount: mesh.indices.length,
-    colorVariation: mesh.colorVariation
+    indexCount: mesh.indices.length
   };
 }
 
@@ -472,10 +471,10 @@ export function createPlanetProgram(glContext: WebGLRenderingContext): WebGLProg
 /**
  * Initialize planet geometry with parameters
  */
-function initializePlanet(terrainComplexity: number, colorVariation: number, size: number): void {
+function initializePlanet(terrainComplexity: number, size: number): void {
   if (!gl) return;
 
-  const mesh = buildPlanetMeshData(terrainComplexity, colorVariation, size);
+  const mesh = buildPlanetMeshData(terrainComplexity, size);
 
   console.log('Icosphere generated:', {
     vertices: mesh.vertices.length / 3,
@@ -513,7 +512,7 @@ void main() {
 const fragmentShaderSource = `
 precision mediump float;
 
-uniform float u_colorVariation;
+uniform vec3 u_baseColor;
 uniform vec3 u_lightDirection;
 
 varying vec3 v_normal;
@@ -525,12 +524,7 @@ void main() {
     float ambient = 0.2;
     float light = ambient + diffuse * 0.8;
     
-    // Base planet color influenced by colorVariation
-    vec3 baseColor = vec3(0.2 + u_colorVariation * 0.3, 
-                          0.4 + u_colorVariation * 0.2, 
-                          0.3 + (1.0 - u_colorVariation) * 0.4);
-    
-    gl_FragColor = vec4(baseColor * light, 1.0);
+    gl_FragColor = vec4(u_baseColor * light, 1.0);
 }
 `;
 
@@ -771,7 +765,7 @@ function renderPlanet(params?: RenderParams): void {
     camera.targetRotationY += 0.005;
   }
   
-  const effectiveParams = params || currentRenderParams || { colorVariation: planetGeometry.colorVariation };
+  const effectiveParams = params || currentRenderParams || { color: DEFAULT_COLOR };
   
   // Clear background - very dark gray/black for contrast with blue sphere
   gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -821,9 +815,14 @@ function renderPlanet(params?: RenderParams): void {
     gl.uniformMatrix3fv(normalMatrixLocation, false, normalMatrix);
   }
   
-  const colorVariationLocation = gl.getUniformLocation(program, 'u_colorVariation');
-  if (colorVariationLocation) {
-    gl.uniform1f(colorVariationLocation, effectiveParams.colorVariation || planetGeometry.colorVariation || 0.5);
+  const baseColorLocation = gl.getUniformLocation(program, 'u_baseColor');
+  if (baseColorLocation) {
+    const color = effectiveParams.color || DEFAULT_COLOR;
+    gl.uniform3fv(baseColorLocation, new Float32Array([
+      color[0] ?? DEFAULT_COLOR[0],
+      color[1] ?? DEFAULT_COLOR[1],
+      color[2] ?? DEFAULT_COLOR[2]
+    ]));
   }
   
   const lightDirection: [number, number, number] = params?.lightDirection || [0.5, 0.8, 0.3];
@@ -852,7 +851,7 @@ export function renderPlanetInstance(options: {
   modelMatrix: number[];
   viewMatrix: number[];
   projectionMatrix: number[];
-  colorVariation?: number;
+  color?: [number, number, number];
   lightDirection?: [number, number, number];
 }): void {
   const { gl: context, program: planetProgram, geometry, modelMatrix, viewMatrix, projectionMatrix } = options;
@@ -899,9 +898,14 @@ export function renderPlanetInstance(options: {
     context.uniformMatrix3fv(normalMatrixLocation, false, normalMatrix);
   }
 
-  const colorVariationLocation = context.getUniformLocation(planetProgram, 'u_colorVariation');
-  if (colorVariationLocation) {
-    context.uniform1f(colorVariationLocation, options.colorVariation ?? geometry.colorVariation);
+  const baseColorLocation = context.getUniformLocation(planetProgram, 'u_baseColor');
+  if (baseColorLocation) {
+    const color = options.color || DEFAULT_COLOR;
+    context.uniform3fv(baseColorLocation, new Float32Array([
+      color[0] ?? DEFAULT_COLOR[0],
+      color[1] ?? DEFAULT_COLOR[1],
+      color[2] ?? DEFAULT_COLOR[2]
+    ]));
   }
 
   const lightDirection: [number, number, number] = options.lightDirection || [0.5, 0.8, 0.3];
@@ -951,12 +955,12 @@ export function initPlanetGenerator(canvas: HTMLCanvasElement): boolean {
 /**
  * Update planet with new parameters
  */
-export function updatePlanet(terrainComplexity: number, colorVariation: number, size: number): void {
+export function updatePlanet(terrainComplexity: number, size: number): void {
   if (!gl || !program) {
     return;
   }
   
-  initializePlanet(terrainComplexity, colorVariation, size);
+  initializePlanet(terrainComplexity, size);
 }
 
 // Global render loop state

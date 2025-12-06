@@ -266,8 +266,7 @@ export function createRocketGeometry(gl: WebGLRenderingContext): RocketGeometry 
     positions: positionBuffer,
     normals: normalBuffer,
     indices: indexBuffer,
-    indexCount: mesh.indices.length,
-    colorVariation: 0.2
+    indexCount: mesh.indices.length
   };
 }
 

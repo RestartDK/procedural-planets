@@ -1,5 +1,5 @@
 import { loadPlanet, savePlanet, updatePlanet as updatePlanetStorage } from "./storage";
-import type { PlanetParameters } from "./types";
+import type { PlanetParameters, RenderParams } from "./types";
 import { 
   initPlanetGenerator, 
   updatePlanet, 
@@ -7,14 +7,33 @@ import {
   updateRenderParams 
 } from "./planet-generator";
 
+const DEFAULT_COLOR = '#66a0ff';
+
 let currentParams: PlanetParameters = {
   terrainComplexity: 0.5,
-  colorVariation: 0.5,
+  color: DEFAULT_COLOR,
   size: 1.0
 };
 
 let currentPlanetId: string | null = null;
 let updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function hexToRGB(color: string): [number, number, number] {
+  const hex = color.replace('#', '');
+  if (hex.length !== 6) {
+    return [0.4, 0.6, 1];
+  }
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  return [r, g, b];
+}
+
+function paramsToRenderParams(params: PlanetParameters): RenderParams {
+  return {
+    color: hexToRGB(params.color)
+  };
+}
 
 /**
  * Initialize controls
@@ -36,6 +55,7 @@ function initControls(): void {
     if (planet) {
       currentPlanetId = planetId;
       currentParams = { ...planet.parameters };
+      currentParams.color = currentParams.color || DEFAULT_COLOR;
     } else {
       currentPlanetId = null;
       randomizeParameters();
@@ -55,10 +75,10 @@ function initControls(): void {
   updateSliders();
   
   // Initialize planet with current parameters
-  updatePlanet(currentParams.terrainComplexity, currentParams.colorVariation, currentParams.size);
+  updatePlanet(currentParams.terrainComplexity, currentParams.size);
   
   // Start render loop
-  startRenderLoop(currentParams);
+  startRenderLoop(paramsToRenderParams(currentParams));
   
   // Setup event listeners
   setupEventListeners();
@@ -69,11 +89,11 @@ function initControls(): void {
  */
 function updateSliders(): void {
   const terrainSlider = document.getElementById('terrain-slider') as HTMLInputElement | null;
-  const colorSlider = document.getElementById('color-slider') as HTMLInputElement | null;
+  const colorPicker = document.getElementById('color-picker') as HTMLInputElement | null;
   const sizeSlider = document.getElementById('size-slider') as HTMLInputElement | null;
   
   if (terrainSlider) terrainSlider.value = currentParams.terrainComplexity.toString();
-  if (colorSlider) colorSlider.value = currentParams.colorVariation.toString();
+  if (colorPicker) colorPicker.value = currentParams.color;
   if (sizeSlider) sizeSlider.value = currentParams.size.toString();
   
   updateSliderDisplay();
@@ -88,7 +108,7 @@ function updateSliderDisplay(): void {
   const sizeValue = document.getElementById('size-value');
   
   if (terrainValue) terrainValue.textContent = currentParams.terrainComplexity.toFixed(2);
-  if (colorValue) colorValue.textContent = currentParams.colorVariation.toFixed(2);
+  if (colorValue) colorValue.textContent = currentParams.color.toUpperCase();
   if (sizeValue) sizeValue.textContent = currentParams.size.toFixed(2);
 }
 
@@ -102,16 +122,15 @@ function updatePlanetParams(): void {
   }
   
   // Update render params immediately for smooth slider updates
-  updateRenderParams(currentParams);
+  updateRenderParams(paramsToRenderParams(currentParams));
   
   // Debounce geometry regeneration for performance
   updateTimeout = setTimeout(() => {
     updatePlanet(
       currentParams.terrainComplexity,
-      currentParams.colorVariation,
       currentParams.size
     );
-    updateRenderParams(currentParams);
+    updateRenderParams(paramsToRenderParams(currentParams));
   }, 100);
 }
 
@@ -132,14 +151,14 @@ function setupEventListeners(): void {
   }
   
   // Color slider
-  const colorSlider = document.getElementById('color-slider') as HTMLInputElement | null;
-  if (colorSlider) {
-    colorSlider.addEventListener('input', (e) => {
+  const colorPicker = document.getElementById('color-picker') as HTMLInputElement | null;
+  if (colorPicker) {
+    colorPicker.addEventListener('input', (e) => {
       const target = e.target as HTMLInputElement;
-      currentParams.colorVariation = parseFloat(target.value);
+      currentParams.color = target.value;
       const colorValue = document.getElementById('color-value');
-      if (colorValue) colorValue.textContent = currentParams.colorVariation.toFixed(2);
-      updatePlanetParams();
+      if (colorValue) colorValue.textContent = currentParams.color.toUpperCase();
+      updateRenderParams(paramsToRenderParams(currentParams));
     });
   }
   
@@ -163,17 +182,17 @@ function setupEventListeners(): void {
       updateSliders();
       updatePlanet(
         currentParams.terrainComplexity,
-        currentParams.colorVariation,
         currentParams.size
       );
-      updateRenderParams(currentParams);
+      updateRenderParams(paramsToRenderParams(currentParams));
     });
   }
   
   // Save button
   const saveBtn = document.getElementById('save-btn');
   if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       saveCurrentPlanet();
     });
   }
@@ -184,7 +203,7 @@ function setupEventListeners(): void {
  */
 function randomizeParameters(): void {
   currentParams.terrainComplexity = Math.random();
-  currentParams.colorVariation = Math.random();
+  currentParams.color = `#${Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0')}`;
   currentParams.size = 0.5 + Math.random() * 1.5; // Between 0.5 and 2.0
 }
 
@@ -192,42 +211,25 @@ function randomizeParameters(): void {
  * Save current planet
  */
 function saveCurrentPlanet(): void {
-  // If editing existing planet, ask for confirmation to update
   const isEditing = currentPlanetId !== null;
-  const promptText = isEditing 
-    ? `Update planet name (current will be updated):`
-    : 'Enter a name for this planet:';
-  
-  const name = prompt(promptText);
-  
-  if (name === null) {
-    return; // User cancelled
-  }
-  
-  if (name.trim() === '') {
-    alert('Please enter a valid name.');
-    return;
-  }
-  
+
   try {
     if (isEditing && currentPlanetId) {
-      // Update existing planet
-      const planet = updatePlanetStorage(currentPlanetId, name.trim(), currentParams);
-      if (planet) {
-        alert(`Planet "${planet.name}" updated successfully!`);
-      } else {
-        alert('Error: Planet not found. Creating new planet instead.');
-        // Fall back to creating new planet
-        const newPlanet = savePlanet(name.trim(), currentParams);
+      const planet = updatePlanetStorage(currentPlanetId, currentParams);
+      if (!planet) {
+        console.warn('Planet not found while updating; creating new planet instead.');
+        const newPlanet = savePlanet(currentParams);
         currentPlanetId = newPlanet.id;
-        alert(`Planet "${newPlanet.name}" saved successfully!`);
+      } else {
+        // updated silently
       }
     } else {
-      // Create new planet
-      const planet = savePlanet(name.trim(), currentParams);
+      const planet = savePlanet(currentParams);
       currentPlanetId = planet.id;
-      alert(`Planet "${planet.name}" saved successfully!`);
     }
+
+    // After successful save/update, go back to gallery
+    window.location.href = '/';
   } catch (error) {
     console.error('Error saving planet:', error);
   }
