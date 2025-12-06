@@ -1,4 +1,9 @@
-<!-- 26b563d0-bb9f-4cf7-9fd6-bd374b346454 e0910419-84be-4b7b-ade8-1458b74ac128 -->
+---
+name: Procedural Planets App Implementation Plan
+overview: ""
+todos: []
+---
+
 # Procedural Planets App Implementation Plan
 
 ## Project Structure

@@ -1,26 +1,26 @@
 .gallery-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: var(--spacing-lg); /* Outer padding */
 }
 
 .gallery-container header {
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: var(--spacing-2xl); /* 48px */
 }
 
 .planets-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
+    gap: var(--spacing-lg); /* 24px - spacing between cards */
+    margin-bottom: var(--spacing-2xl);
 }
 
 .planet-card {
     background: var(--color-card-bg);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border); /* Border contrasts with both card and background */
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: var(--spacing-lg); /* Outer padding */
     transition: all 0.3s ease;
 }
 
@@ -28,63 +28,61 @@
     width: 100%;
     height: 200px;
     border-radius: 8px;
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacing-md); /* 16px - inner padding */
     background: var(--color-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border); /* Border contrasts with both preview and card */
 }
 
 .planet-info {
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacing-md); /* 16px - inner padding */
 }
 
 .planet-name {
     font-size: 1.25rem;
     font-weight: 600;
     color: var(--color-text);
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-xs); /* 4px - inner padding between related elements */
+    letter-spacing: -0.01em; /* Lower letter spacing for larger text */
+    line-height: 1.3;
 }
 
 .planet-date {
-    font-size: 0.875rem;
+    font-size: 0.875rem; /* 14px - small text */
     color: var(--color-text-muted);
+    letter-spacing: 0.01em; /* Higher letter spacing for small text */
+    line-height: 1.7; /* Higher line height for small text */
 }
 
 .planet-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: var(--spacing-sm); /* 8px - inner padding between buttons */
 }
 
 .planet-actions .btn {
     flex: 1;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-}
-
-.btn-delete {
-    background: #d32f2f;
-    color: white;
-}
-
-.btn-delete:hover {
-    background: #b71c1c;
+    /* Horizontal padding = 2× vertical padding */
+    padding: 8px 16px; /* 8px vertical, 16px horizontal */
+    font-size: 0.875rem; /* 14px */
+    letter-spacing: 0.01em; /* Higher letter spacing for small text */
 }
 
 .create-new-container {
     text-align: center;
-    margin-top: 3rem;
+    margin-top: var(--spacing-2xl);
 }
 
 .create-new-btn {
     display: inline-block;
-    padding: 1rem 2rem;
+    /* Horizontal padding = 2× vertical padding */
+    padding: 16px 32px; /* 16px vertical, 32px horizontal */
     font-size: 1.125rem;
     background: var(--color-primary);
-    color: white;
+    color: var(--color-white); /* Near-white instead of pure white */
     border-radius: 12px;
     text-decoration: none;
     transition: all 0.3s ease;
@@ -96,13 +94,15 @@
 
 .empty-state {
     text-align: center;
-    padding: 4rem 2rem;
+    padding: var(--spacing-2xl) var(--spacing-lg);
     color: var(--color-text);
 }
 
 .empty-state h2 {
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacing-md);
     color: var(--color-text);
+    letter-spacing: -0.01em;
+    line-height: 1.3;
 }
 
 /* Responsive */
@@ -112,6 +112,6 @@
     }
 
     .gallery-container {
-        padding: 1rem;
+        padding: var(--spacing-md); /* 16px */
     }
 }

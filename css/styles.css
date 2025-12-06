@@ -1,14 +1,31 @@
-/* CSS Variables */
 :root {
-    --color-text: #39393A;
-    --color-bg: #E6E6E6;
-    --color-card-bg: #FFFFFF;
-    --color-primary: #297373;
-    --color-primary-light: #3a8a8a;
-    --color-border: #39393A;
-    --color-border-light: #2a2a2b;
-    --color-border-dark: #1e1e1f;
-    --color-text-muted: rgba(57, 57, 58, 0.7);
+    /* Primary Color (Cool Teal) - HSL for easy adjustment */
+    --color-primary: hsl(180, 50%, 30%);
+    --color-primary-light: hsl(180, 45%, 38%);
+    
+    /* Near-black and Near-white (not pure black/white) */
+    --color-black: hsl(180, 3%, 10%); /* Near-black with cool teal tint */
+    --color-white: hsl(180, 2%, 98%); /* Near-white with cool teal tint */
+    
+    /* Saturated Neutrals with Cool Teal Tint (5% saturation max) */
+    --color-text: hsl(180, 3%, 24%); /* Near-black with cool teal tint */
+    --color-bg: hsl(180, 5%, 91%); /* Light gray with cool teal tint */
+    --color-card-bg: hsl(180, 3%, 98%); /* Near-white with cool teal tint */
+    --color-border: hsl(180, 4%, 65%); /* Dark gray with cool teal tint - contrasts with both bg and card */
+    --color-border-light: hsl(180, 3%, 24%); /* Lighter border */
+    --color-text-muted: hsl(180, 3%, 24%, 0.7); /* Muted text with tint */
+    
+    /* Error/Destructive Color (Red) */
+    --color-error: hsl(0, 70%, 50%); /* Red error color */
+    --color-error-hover: hsl(0, 70%, 42%); /* Darker red on hover */
+    
+    /* Spacing Scale (8px base - mathematically related) */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-2xl: 48px;
 }
 
 /* Reset and Base Styles */
@@ -19,35 +36,63 @@
 }
 
 body {
-    font-family: 'Inter', 'Besley', sans-serif;
+    font-family: 'Inter', sans-serif; /* Inter for body text */
     background: var(--color-bg);
     color: var(--color-text);
     min-height: 100vh;
     line-height: 1.6;
+    font-size: 16px; /* Minimum 16px for body text */
+    margin: 0;
+    padding: 0;
+}
+
+/* Text content should have ~70 characters line length */
+p, li, .text-content {
+    max-width: 70ch; /* ~70 characters line length */
 }
 
 /* Typography */
 h1, h2, h3 {
+    font-family: 'Geist', sans-serif; /* Geist for headings */
     font-weight: 600;
     color: var(--color-text);
 }
 
 h1 {
     font-size: 2.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: var(--spacing-lg);
+    letter-spacing: -0.02em; /* Lower letter spacing for large text */
+    line-height: 1.2; /* Lower line height for large text */
 }
 
 h2 {
     font-size: 1.8rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--spacing-md);
+    letter-spacing: -0.01em; /* Lower letter spacing for large text */
+    line-height: 1.3; /* Lower line height for large text */
+}
+
+h3 {
+    font-size: 1.5rem;
+    margin-bottom: var(--spacing-md);
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+}
+
+/* Small text - raise letter spacing and line height */
+small, .text-small {
+    font-size: 0.875rem;
+    letter-spacing: 0.01em; /* Higher letter spacing for small text */
+    line-height: 1.7; /* Higher line height for small text */
 }
 
 /* Common Button Styles */
 .btn {
-    padding: 0.75rem 1.5rem;
+    /* Horizontal padding = 2× vertical padding */
+    padding: 12px 24px; /* 12px vertical, 24px horizontal */
     border: none;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 1rem; /* 16px */
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -58,7 +103,7 @@ h2 {
 
 .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-white); /* Near-white instead of pure white */
 }
 
 .btn-primary:hover {
@@ -66,30 +111,61 @@ h2 {
 }
 
 .btn-secondary {
-    background: var(--color-border-light);
+    background: var(--color-card-bg);
     color: var(--color-text);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border); /* Border contrasts with both bg and container */
 }
 
 .btn-secondary:hover {
-    background: var(--color-border);
-    color: var(--color-bg);
+    background: var(--color-bg);
+    border-color: var(--color-border-light);
 }
 
 /* Error Message */
 .error-message {
-    padding: 1rem;
-    background: #d32f2f;
-    color: white;
+    padding: var(--spacing-md);
+    background: var(--color-error);
+    color: var(--color-white);
     border-radius: 8px;
     text-align: center;
-    margin: 2rem;
+    margin: var(--spacing-lg);
+}
+
+/* Delete Button Style */
+.btn-delete {
+    background: var(--color-error);
+    color: var(--color-white);
+}
+
+.btn-delete:hover {
+    background: var(--color-error-hover);
 }
 
 /* Layout Utilities */
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: var(--spacing-lg); /* Outer padding */
+}
+
+/* Cards - Container brightness within 7% limit for light interfaces */
+.card {
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-border); /* Border contrasts with both card and background */
+    border-radius: 12px;
+    padding: var(--spacing-lg); /* Outer padding */
+}
+
+/* Shadows - blur = 2× distance */
+.shadow-sm {
+    box-shadow: 0 2px 4px hsla(0, 0%, 0%, 0.1); /* 2px distance, 4px blur */
+}
+
+.shadow-md {
+    box-shadow: 0 4px 8px hsla(0, 0%, 0%, 0.1); /* 4px distance, 8px blur */
+}
+
+.shadow-lg {
+    box-shadow: 0 8px 16px hsla(0, 0%, 0%, 0.1); /* 8px distance, 16px blur */
 }
 
