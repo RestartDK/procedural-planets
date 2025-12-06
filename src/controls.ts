@@ -1,4 +1,4 @@
-import { loadPlanet, savePlanet } from "./storage";
+import { loadPlanet, savePlanet, updatePlanet as updatePlanetStorage } from "./storage";
 import type { PlanetParameters } from "./types";
 import { 
   initPlanetGenerator, 
@@ -13,6 +13,7 @@ let currentParams: PlanetParameters = {
   size: 1.0
 };
 
+let currentPlanetId: string | null = null;
 let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /**
@@ -33,9 +34,14 @@ function initControls(): void {
   if (planetId) {
     const planet = loadPlanet(planetId);
     if (planet) {
+      currentPlanetId = planetId;
       currentParams = { ...planet.parameters };
+    } else {
+      currentPlanetId = null;
+      randomizeParameters();
     }
   } else {
+    currentPlanetId = null;
     // Start with random parameters
     randomizeParameters();
   }
@@ -186,7 +192,13 @@ function randomizeParameters(): void {
  * Save current planet
  */
 function saveCurrentPlanet(): void {
-  const name = prompt('Enter a name for this planet:');
+  // If editing existing planet, ask for confirmation to update
+  const isEditing = currentPlanetId !== null;
+  const promptText = isEditing 
+    ? `Update planet name (current will be updated):`
+    : 'Enter a name for this planet:';
+  
+  const name = prompt(promptText);
   
   if (name === null) {
     return; // User cancelled
@@ -198,8 +210,24 @@ function saveCurrentPlanet(): void {
   }
   
   try {
-    const planet = savePlanet(name.trim(), currentParams);
-    alert(`Planet "${planet.name}" saved successfully!`);
+    if (isEditing && currentPlanetId) {
+      // Update existing planet
+      const planet = updatePlanetStorage(currentPlanetId, name.trim(), currentParams);
+      if (planet) {
+        alert(`Planet "${planet.name}" updated successfully!`);
+      } else {
+        alert('Error: Planet not found. Creating new planet instead.');
+        // Fall back to creating new planet
+        const newPlanet = savePlanet(name.trim(), currentParams);
+        currentPlanetId = newPlanet.id;
+        alert(`Planet "${newPlanet.name}" saved successfully!`);
+      }
+    } else {
+      // Create new planet
+      const planet = savePlanet(name.trim(), currentParams);
+      currentPlanetId = planet.id;
+      alert(`Planet "${planet.name}" saved successfully!`);
+    }
   } catch (error) {
     console.error('Error saving planet:', error);
   }

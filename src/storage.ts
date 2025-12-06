@@ -21,9 +21,9 @@ export function savePlanet(name: string, parameters: PlanetParameters): Planet {
       name: name || 'Unnamed Planet',
       createdAt: new Date().toISOString(),
       parameters: {
-        terrainComplexity: parameters.terrainComplexity || 0.5,
-        colorVariation: parameters.colorVariation || 0.5,
-        size: parameters.size || 1.0
+        terrainComplexity: parameters.terrainComplexity ?? 0.5,
+        colorVariation: parameters.colorVariation ?? 0.5,
+        size: parameters.size ?? 1.0
       }
     };
     
@@ -38,6 +38,43 @@ export function savePlanet(name: string, parameters: PlanetParameters): Planet {
       alert('Storage quota exceeded. Please delete some planets to save new ones.');
     } else {
       alert('Error saving planet: ' + err.message);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Update an existing planet in localStorage
+ */
+export function updatePlanet(id: string, name: string, parameters: PlanetParameters): Planet | null {
+  try {
+    const planets = getAllPlanets();
+    const planetIndex = planets.findIndex(planet => planet.id === id);
+    
+    if (planetIndex === -1) {
+      return null; // Planet not found
+    }
+    
+    const updatedPlanet: Planet = {
+      ...planets[planetIndex]!,
+      name: name || 'Unnamed Planet',
+      parameters: {
+        terrainComplexity: parameters.terrainComplexity ?? 0.5,
+        colorVariation: parameters.colorVariation ?? 0.5,
+        size: parameters.size ?? 1.0
+      }
+    };
+    
+    planets[planetIndex] = updatedPlanet;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(planets));
+    
+    return updatedPlanet;
+  } catch (error) {
+    const err = error as Error & { name?: string };
+    if (err.name === 'QuotaExceededError') {
+      alert('Storage quota exceeded. Please delete some planets to save new ones.');
+    } else {
+      alert('Error updating planet: ' + err.message);
     }
     throw error;
   }
