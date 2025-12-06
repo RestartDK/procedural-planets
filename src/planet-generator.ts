@@ -12,6 +12,9 @@ let camera: Camera = {
   targetDistance: 20.0
 };
 
+const MIN_CAMERA_DISTANCE = 3.0;
+const MAX_CAMERA_DISTANCE = 100.0;
+
 let isDragging = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
@@ -366,15 +369,10 @@ function initializePlanet(terrainComplexity: number, colorVariation: number, siz
   // Recalculate normals after terrain displacement
   const recalculatedNormals = recalculateNormals(noisyVertices, baseGeometry.indices);
 
-  // Adjust camera distance based on planet size
-  camera.distance = size * 5.0;
-  camera.targetDistance = size * 5.0;
-
   console.log('Icosphere generated:', {
     vertices: noisyVertices.length / 3,
     triangles: baseGeometry.indices.length / 3,
-    size: size,
-    cameraDistance: camera.distance
+    size: size
   });
 
   // Create buffers
@@ -439,26 +437,17 @@ varying vec3 v_normal;
 varying vec3 v_position;
 
 void main() {
-    // Calculate lighting
     vec3 normal = normalize(v_normal);
-    float light = max(dot(normal, u_lightDirection), 0.3);
+    float diffuse = max(dot(normal, u_lightDirection), 0.0);
+    float ambient = 0.2;
+    float light = ambient + diffuse * 0.8;
     
-    // Base color based on position (for variation)
-    vec3 baseColor = vec3(0.2, 0.4, 0.8);
+    // Base planet color influenced by colorVariation
+    vec3 baseColor = vec3(0.2 + u_colorVariation * 0.3, 
+                          0.4 + u_colorVariation * 0.2, 
+                          0.3 + (1.0 - u_colorVariation) * 0.4);
     
-    // Add color variation based on height/position
-    float height = v_position.y;
-    vec3 color1 = vec3(0.1, 0.3, 0.6);
-    vec3 color2 = vec3(0.3, 0.6, 0.2);
-    vec3 color3 = vec3(0.8, 0.7, 0.4);
-    
-    vec3 finalColor = mix(color1, color2, smoothstep(-0.5, 0.5, height));
-    finalColor = mix(finalColor, color3, u_colorVariation * smoothstep(0.0, 1.0, height));
-    
-    // Apply lighting
-    finalColor *= light;
-    
-    gl_FragColor = vec4(finalColor, 1.0);
+    gl_FragColor = vec4(baseColor * light, 1.0);
 }
 `;
 
@@ -478,7 +467,7 @@ function setupCameraControls(canvas: HTMLCanvasElement): void {
       const deltaX = e.clientX - lastMouseX;
       const deltaY = e.clientY - lastMouseY;
       
-      camera.targetRotationY += deltaX * 0.01;
+      camera.targetRotationY += deltaX * -0.01;
       camera.targetRotationX += deltaY * 0.01;
       
       // Clamp vertical rotation
@@ -533,7 +522,7 @@ function setupCameraControls(canvas: HTMLCanvasElement): void {
       if (lastTouchDistance > 0) {
         const scale = distance / lastTouchDistance;
         camera.targetDistance *= scale;
-        camera.targetDistance = Math.max(3.0, Math.min(100.0, camera.targetDistance));
+        camera.targetDistance = Math.max(MIN_CAMERA_DISTANCE, Math.min(MAX_CAMERA_DISTANCE, camera.targetDistance));
       }
       lastTouchDistance = distance;
     }
@@ -566,7 +555,7 @@ function setupCameraControls(canvas: HTMLCanvasElement): void {
     // Note: positive deltaY = scroll down = zoom out (increase distance)
     //       negative deltaY = scroll up = zoom in (decrease distance)
     camera.targetDistance += delta;
-    camera.targetDistance = Math.max(3.0, Math.min(100.0, camera.targetDistance));
+    camera.targetDistance = Math.max(MIN_CAMERA_DISTANCE, Math.min(MAX_CAMERA_DISTANCE, camera.targetDistance));
   }, { passive: false });
 }
 
@@ -629,14 +618,16 @@ function getMVP(): MVP {
   const yy = zzNorm * xxNorm - zxNorm * xzNorm;
   const yz = zxNorm * xyNorm - zyNorm * xxNorm;
   
+  // WebGL uses column-major matrices
+  // Column-major: index = col * 4 + row
   const view = [
-    xxNorm, yx, zxNorm, 0,
-    xyNorm, yy, zyNorm, 0,
-    xzNorm, yz, zzNorm, 0,
+    xxNorm, yx, zxNorm, 0,            // column 0
+    xyNorm, yy, zyNorm, 0,            // column 1
+    xzNorm, yz, zzNorm, 0,            // column 2
     -(xxNorm * eyeX + xyNorm * eyeY + xzNorm * eyeZ),
     -(yx * eyeX + yy * eyeY + yz * eyeZ),
     -(zxNorm * eyeX + zyNorm * eyeY + zzNorm * eyeZ),
-    1
+    1                                  // column 3 (translation)
   ];
   
   // Model matrix (identity for now)
@@ -647,18 +638,16 @@ function getMVP(): MVP {
     0, 0, 0, 1
   ];
   
-  // Multiply matrices (simplified)
+  // Multiply matrices (column-major for WebGL)
   function multiply4x4(a: number[], b: number[]): number[] {
     const result: number[] = new Array(16).fill(0);
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 4; j++) {
+    for (let col = 0; col < 4; col++) {
+      for (let row = 0; row < 4; row++) {
+        let sum = 0;
         for (let k = 0; k < 4; k++) {
-          const aVal = a[i * 4 + k];
-          const bVal = b[k * 4 + j];
-          if (aVal !== undefined && bVal !== undefined) {
-            result[i * 4 + j] = (result[i * 4 + j] || 0) + aVal * bVal;
-          }
+          sum += (a[k * 4 + row] ?? 0) * (b[col * 4 + k] ?? 0);
         }
+        result[col * 4 + row] = sum;
       }
     }
     return result;
@@ -688,7 +677,12 @@ function renderPlanet(params?: RenderParams): void {
   // Log first frame render
   if (frameCount === 0) {
     console.log('First render frame started');
+    console.log('GL context:', !!gl);
+    console.log('Program:', !!program);
+    console.log('Planet geometry:', !!planetGeometry);
+    console.log('Index count:', planetGeometry?.indexCount);
   }
+  frameCount++;
 
   // Auto-rotate when not dragging
   if (!isDragging) {
@@ -697,7 +691,8 @@ function renderPlanet(params?: RenderParams): void {
   
   const effectiveParams = params || currentRenderParams || { colorVariation: planetGeometry.colorVariation };
   
-  gl.clearColor(0.05, 0.05, 0.1, 1.0);
+  // Clear background - very dark gray/black for contrast with blue sphere
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   
   gl.enable(gl.DEPTH_TEST);
