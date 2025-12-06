@@ -1,4 +1,4 @@
-import type { Camera, PlanetGeometry, SphereGeometry, MVP, RenderParams } from "./types";
+import type { Camera, PlanetGeometry, SphereGeometry, MVP, RenderParams, PlanetMeshData } from "./types";
 
 let gl: WebGLRenderingContext | null = null;
 let program: WebGLProgram | null = null;
@@ -14,6 +14,28 @@ let camera: Camera = {
 
 const MIN_CAMERA_DISTANCE = 3.0;
 const MAX_CAMERA_DISTANCE = 100.0;
+
+const IDENTITY_MATRIX = [
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1
+];
+
+// Basic 4x4 matrix multiplication (column-major)
+function multiply4x4(a: number[], b: number[]): number[] {
+  const result: number[] = new Array(16).fill(0);
+  for (let col = 0; col < 4; col++) {
+    for (let row = 0; row < 4; row++) {
+      let sum = 0;
+      for (let k = 0; k < 4; k++) {
+        sum += (a[k * 4 + row] ?? 0) * (b[col * 4 + k] ?? 0);
+      }
+      result[col * 4 + row] = sum;
+    }
+  }
+  return result;
+}
 
 let isDragging = false;
 let lastMouseX = 0;
@@ -107,18 +129,22 @@ function initWebGL(canvas: HTMLCanvasElement): boolean {
 /**
  * Create and compile shader
  */
-function createShader(type: number, source: string): WebGLShader | null {
-  if (!gl) return null;
+function createShader(
+  type: number,
+  source: string,
+  context: WebGLRenderingContext | null = gl
+): WebGLShader | null {
+  if (!context) return null;
   
-  const shader = gl.createShader(type);
+  const shader = context.createShader(type);
   if (!shader) return null;
   
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
+  context.shaderSource(shader, source);
+  context.compileShader(shader);
   
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
+  if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
+    console.error('Shader compilation error:', context.getShaderInfoLog(shader));
+    context.deleteShader(shader);
     return null;
   }
   
@@ -128,26 +154,30 @@ function createShader(type: number, source: string): WebGLShader | null {
 /**
  * Create shader program
  */
-function createProgram(vertexSource: string, fragmentSource: string): WebGLProgram | null {
-  if (!gl) return null;
+function createProgram(
+  vertexSource: string,
+  fragmentSource: string,
+  context: WebGLRenderingContext | null = gl
+): WebGLProgram | null {
+  if (!context) return null;
   
-  const vertexShader = createShader(gl.VERTEX_SHADER, vertexSource);
-  const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentSource);
+  const vertexShader = createShader(context.VERTEX_SHADER, vertexSource, context);
+  const fragmentShader = createShader(context.FRAGMENT_SHADER, fragmentSource, context);
   
   if (!vertexShader || !fragmentShader) {
     return null;
   }
   
-  const program = gl.createProgram();
+  const program = context.createProgram();
   if (!program) return null;
   
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
+  context.attachShader(program, vertexShader);
+  context.attachShader(program, fragmentShader);
+  context.linkProgram(program);
   
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    console.error('Program linking error:', gl.getProgramInfoLog(program));
-    gl.deleteProgram(program);
+  if (!context.getProgramParameter(program, context.LINK_STATUS)) {
+    console.error('Program linking error:', context.getProgramInfoLog(program));
+    context.deleteProgram(program);
     return null;
   }
   
@@ -358,49 +388,102 @@ function applyNoise(vertices: number[], terrainComplexity: number, size: number)
 }
 
 /**
+ * Build a model matrix from translation + uniform scale
+ */
+export function composeModelMatrix(
+  position: [number, number, number],
+  scale = 1
+): number[] {
+  return [
+    scale, 0, 0, 0,
+    0, scale, 0, 0,
+    0, 0, scale, 0,
+    position[0], position[1], position[2], 1
+  ];
+}
+
+/**
+ * Build mesh data for a planet without binding it to a GL context.
+ */
+export function buildPlanetMeshData(
+  terrainComplexity: number,
+  colorVariation: number,
+  size: number
+): PlanetMeshData {
+  const baseGeometry = generateIcosphere(3);
+  const noisyVertices = applyNoise(baseGeometry.vertices, terrainComplexity, size);
+  const recalculatedNormals = recalculateNormals(noisyVertices, baseGeometry.indices);
+
+  return {
+    vertices: noisyVertices,
+    indices: baseGeometry.indices,
+    normals: recalculatedNormals,
+    colorVariation
+  };
+}
+
+/**
+ * Create WebGL buffers for a planet mesh
+ */
+export function createPlanetGeometryFromMesh(
+  glContext: WebGLRenderingContext,
+  mesh: PlanetMeshData
+): PlanetGeometry {
+  const positionBuffer = glContext.createBuffer();
+  if (!positionBuffer) {
+    throw new Error('Failed to create position buffer');
+  }
+
+  glContext.bindBuffer(glContext.ARRAY_BUFFER, positionBuffer);
+  glContext.bufferData(glContext.ARRAY_BUFFER, new Float32Array(mesh.vertices), glContext.STATIC_DRAW);
+
+  const normalBuffer = glContext.createBuffer();
+  if (!normalBuffer) {
+    throw new Error('Failed to create normal buffer');
+  }
+
+  glContext.bindBuffer(glContext.ARRAY_BUFFER, normalBuffer);
+  glContext.bufferData(glContext.ARRAY_BUFFER, new Float32Array(mesh.normals), glContext.STATIC_DRAW);
+
+  const indexBuffer = glContext.createBuffer();
+  if (!indexBuffer) {
+    throw new Error('Failed to create index buffer');
+  }
+
+  glContext.bindBuffer(glContext.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  glContext.bufferData(glContext.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.indices), glContext.STATIC_DRAW);
+
+  return {
+    positions: positionBuffer,
+    normals: normalBuffer,
+    indices: indexBuffer,
+    indexCount: mesh.indices.length,
+    colorVariation: mesh.colorVariation
+  };
+}
+
+/**
+ * Create shader program for planet rendering using the shared shaders.
+ */
+export function createPlanetProgram(glContext: WebGLRenderingContext): WebGLProgram | null {
+  return createProgram(vertexShaderSource, fragmentShaderSource, glContext);
+}
+
+/**
  * Initialize planet geometry with parameters
  */
 function initializePlanet(terrainComplexity: number, colorVariation: number, size: number): void {
   if (!gl) return;
 
-  const baseGeometry = generateIcosphere(3);
-  const noisyVertices = applyNoise(baseGeometry.vertices, terrainComplexity, size);
-
-  // Recalculate normals after terrain displacement
-  const recalculatedNormals = recalculateNormals(noisyVertices, baseGeometry.indices);
+  const mesh = buildPlanetMeshData(terrainComplexity, colorVariation, size);
 
   console.log('Icosphere generated:', {
-    vertices: noisyVertices.length / 3,
-    triangles: baseGeometry.indices.length / 3,
+    vertices: mesh.vertices.length / 3,
+    triangles: mesh.indices.length / 3,
     size: size
   });
 
-  // Create buffers
-  const positionBuffer = gl.createBuffer();
-  if (!positionBuffer) return;
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(noisyVertices), gl.STATIC_DRAW);
-
-  const normalBuffer = gl.createBuffer();
-  if (!normalBuffer) return;
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(recalculatedNormals), gl.STATIC_DRAW);
-  
-  const indexBuffer = gl.createBuffer();
-  if (!indexBuffer) return;
-  
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(baseGeometry.indices), gl.STATIC_DRAW);
-  
-  planetGeometry = {
-    positions: positionBuffer,
-    normals: normalBuffer,
-    indices: indexBuffer,
-    indexCount: baseGeometry.indices.length,
-    colorVariation: colorVariation
-  };
+  planetGeometry = createPlanetGeometryFromMesh(gl, mesh);
 }
 
 /**
@@ -563,7 +646,7 @@ function setupCameraControls(canvas: HTMLCanvasElement): void {
  * Get model-view-projection matrix
  */
 let frameCount = 0;
-function getMVP(): MVP {
+function getMVP(modelMatrix?: number[]): MVP {
   if (!gl) {
     throw new Error('WebGL context not initialized');
   }
@@ -630,28 +713,8 @@ function getMVP(): MVP {
     1                                  // column 3 (translation)
   ];
   
-  // Model matrix (identity for now)
-  const model = [
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ];
-  
-  // Multiply matrices (column-major for WebGL)
-  function multiply4x4(a: number[], b: number[]): number[] {
-    const result: number[] = new Array(16).fill(0);
-    for (let col = 0; col < 4; col++) {
-      for (let row = 0; row < 4; row++) {
-        let sum = 0;
-        for (let k = 0; k < 4; k++) {
-          sum += (a[k * 4 + row] ?? 0) * (b[col * 4 + k] ?? 0);
-        }
-        result[col * 4 + row] = sum;
-      }
-    }
-    return result;
-  }
+  // Model matrix (identity by default, overridable for world placement)
+  const model = modelMatrix || IDENTITY_MATRIX;
   
   const modelView = multiply4x4(view, model);
   const mvp = multiply4x4(projection, modelView);
@@ -664,6 +727,25 @@ function getMVP(): MVP {
   ];
   
   return { mvp, modelView, normalMatrix };
+}
+
+function getMVPFromExternal(
+  modelMatrix: number[],
+  viewMatrix: number[],
+  projectionMatrix: number[]
+): MVP {
+  const modelView = multiply4x4(viewMatrix, modelMatrix);
+  const mvp = multiply4x4(projectionMatrix, modelView);
+
+  return {
+    mvp,
+    modelView,
+    normalMatrix: [
+      modelView[0] ?? 0, modelView[1] ?? 0, modelView[2] ?? 0,
+      modelView[4] ?? 0, modelView[5] ?? 0, modelView[6] ?? 0,
+      modelView[8] ?? 0, modelView[9] ?? 0, modelView[10] ?? 0
+    ]
+  };
 }
 
 /**
@@ -715,7 +797,14 @@ function renderPlanet(params?: RenderParams): void {
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, planetGeometry.indices);
   
   // Set uniforms
-  const { mvp, modelView, normalMatrix } = getMVP();
+  const matrices = params?.viewMatrix && params?.projectionMatrix
+    ? getMVPFromExternal(
+        params.modelMatrix || IDENTITY_MATRIX,
+        params.viewMatrix,
+        params.projectionMatrix
+      )
+    : getMVP(params?.modelMatrix);
+  const { mvp, modelView, normalMatrix } = matrices;
   
   const mvpLocation = gl.getUniformLocation(program, 'u_modelViewProjection');
   if (mvpLocation) {
@@ -737,7 +826,7 @@ function renderPlanet(params?: RenderParams): void {
     gl.uniform1f(colorVariationLocation, effectiveParams.colorVariation || planetGeometry.colorVariation || 0.5);
   }
   
-  const lightDirection: [number, number, number] = [0.5, 0.8, 0.3];
+  const lightDirection: [number, number, number] = params?.lightDirection || [0.5, 0.8, 0.3];
   const lightDirLength = Math.sqrt(lightDirection[0] ** 2 + lightDirection[1] ** 2 + lightDirection[2] ** 2);
   const lightDirNormalized: [number, number, number] = [
     lightDirection[0] / lightDirLength,
@@ -751,6 +840,83 @@ function renderPlanet(params?: RenderParams): void {
   
   // Draw
   gl.drawElements(gl.TRIANGLES, planetGeometry.indexCount, gl.UNSIGNED_SHORT, 0);
+}
+
+/**
+ * Render a planet geometry with explicit matrices (used by multi-object scenes).
+ */
+export function renderPlanetInstance(options: {
+  gl: WebGLRenderingContext;
+  program: WebGLProgram;
+  geometry: PlanetGeometry;
+  modelMatrix: number[];
+  viewMatrix: number[];
+  projectionMatrix: number[];
+  colorVariation?: number;
+  lightDirection?: [number, number, number];
+}): void {
+  const { gl: context, program: planetProgram, geometry, modelMatrix, viewMatrix, projectionMatrix } = options;
+
+  context.useProgram(planetProgram);
+  context.enable(context.DEPTH_TEST);
+  context.enable(context.CULL_FACE);
+
+  const positionLocation = context.getAttribLocation(planetProgram, 'a_position');
+  const normalLocation = context.getAttribLocation(planetProgram, 'a_normal');
+
+  if (positionLocation !== -1) {
+    context.bindBuffer(context.ARRAY_BUFFER, geometry.positions);
+    context.enableVertexAttribArray(positionLocation);
+    context.vertexAttribPointer(positionLocation, 3, context.FLOAT, false, 0, 0);
+  }
+
+  if (normalLocation !== -1) {
+    context.bindBuffer(context.ARRAY_BUFFER, geometry.normals);
+    context.enableVertexAttribArray(normalLocation);
+    context.vertexAttribPointer(normalLocation, 3, context.FLOAT, false, 0, 0);
+  }
+
+  context.bindBuffer(context.ELEMENT_ARRAY_BUFFER, geometry.indices);
+
+  const { mvp, modelView, normalMatrix } = getMVPFromExternal(
+    modelMatrix,
+    viewMatrix,
+    projectionMatrix
+  );
+
+  const mvpLocation = context.getUniformLocation(planetProgram, 'u_modelViewProjection');
+  if (mvpLocation) {
+    context.uniformMatrix4fv(mvpLocation, false, mvp);
+  }
+
+  const modelViewLocation = context.getUniformLocation(planetProgram, 'u_modelView');
+  if (modelViewLocation) {
+    context.uniformMatrix4fv(modelViewLocation, false, modelView);
+  }
+
+  const normalMatrixLocation = context.getUniformLocation(planetProgram, 'u_normalMatrix');
+  if (normalMatrixLocation) {
+    context.uniformMatrix3fv(normalMatrixLocation, false, normalMatrix);
+  }
+
+  const colorVariationLocation = context.getUniformLocation(planetProgram, 'u_colorVariation');
+  if (colorVariationLocation) {
+    context.uniform1f(colorVariationLocation, options.colorVariation ?? geometry.colorVariation);
+  }
+
+  const lightDirection: [number, number, number] = options.lightDirection || [0.5, 0.8, 0.3];
+  const lightDirLength = Math.sqrt(lightDirection[0] ** 2 + lightDirection[1] ** 2 + lightDirection[2] ** 2);
+  const lightDirNormalized: [number, number, number] = [
+    lightDirection[0] / lightDirLength,
+    lightDirection[1] / lightDirLength,
+    lightDirection[2] / lightDirLength
+  ];
+  const lightLocation = context.getUniformLocation(planetProgram, 'u_lightDirection');
+  if (lightLocation) {
+    context.uniform3fv(lightLocation, lightDirNormalized);
+  }
+
+  context.drawElements(context.TRIANGLES, geometry.indexCount, context.UNSIGNED_SHORT, 0);
 }
 
 /**

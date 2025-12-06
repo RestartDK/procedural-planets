@@ -11,6 +11,7 @@
   },
   "scripts": {
     "tsc": "bunx tsc --noEmit",
-    "dev": "bun run index.ts"
+    "dev": "bun run index.ts",
+    "build": "bun build ./**/*.html --minify --outdir=dist"
   }
 }

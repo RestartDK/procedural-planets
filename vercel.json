@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "bun run build",
+  "outputDirectory": "dist",
+  "bunVersion": "1.x",
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "./dist/index.html"
+    },
+    {
+      "source": "/creator",
+      "destination": "./dist/creator.html"
+    }
+  ]
+}

@@ -11,20 +11,31 @@
     <link rel="stylesheet" href="../css/gallery.css">
 </head>
 <body>
-    <div class="gallery-container">
-        <header>
-            <h1>Procedural Planets Gallery</h1>
-        </header>
-        
-        <div id="planets-grid" class="planets-grid">
-            <!-- Planet cards will be inserted here by JavaScript -->
-        </div>
-        
-        <div class="create-new-container">
-            <a href="/creator" class="create-new-btn">+ Create New Planet</a>
+    <div class="galaxy-wrapper">
+        <canvas id="galaxy-canvas"></canvas>
+
+        <div id="ui-layer">
+            <div id="hud">
+                <h1>3D Galaxy Explorer</h1>
+                <p><strong>Controls:</strong> Move mouse to steer • Scroll wheel to adjust speed • Hold Space to thrust • Fly near planets to interact</p>
+            </div>
+
+            <div id="planet-actions" style="display: none;">
+                <button id="edit-btn">Edit</button>
+                <button id="delete-btn" class="danger">Delete</button>
+            </div>
+
+            <a href="/creator" id="add-planet-btn">+ Add Planet</a>
+
+            <div id="empty-state" style="display: none;">
+                <h2>No planets yet</h2>
+                <p>Create one in the creator to explore it in 3D.</p>
+            </div>
         </div>
     </div>
-    
+
+    <div id="webgl-error" style="display: none;">WebGL not supported on this device.</div>
+
     <script type="module" src="../src/gallery.ts"></script>
 </body>
 </html>
